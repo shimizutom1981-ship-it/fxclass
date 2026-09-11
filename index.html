@@ -127,7 +127,6 @@
       margin-top: 4px;
       line-height: 1.3;
     }
-    /* 判定結果カード */
     .result-box {
       background: white;
       border-radius: 12px;
@@ -139,7 +138,7 @@
       border-top-color: var(--alert);
     }
     .result-code {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: 900;
       color: var(--accent);
       margin-bottom: 6px;
@@ -148,7 +147,7 @@
       color: var(--alert);
     }
     .result-title {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
       margin-bottom: 8px;
     }
@@ -218,21 +217,18 @@
   <header>
     <h1>骨折分類 Pro</h1>
     <div class="header-btns">
-      <button class="nav-btn" onclick="app.back()">戻る</button>
-      <button class="nav-btn" onclick="app.reset()">Top</button>
+      <button class="nav-btn" onclick="app.userBack()">戻る</button>
+      <button class="nav-btn" onclick="app.userReset()">Top</button>
     </div>
   </header>
 
   <div class="breadcrumb-bar" id="breadcrumb">部位を選択</div>
 
-  <main id="app-view">
-    <!-- レンダリングエリア -->
-  </main>
+  <main id="app-view"></main>
 
   <div class="toast" id="toast">カルテ用テキストをコピーしました</div>
 
   <script>
-    // アイコン生成ヘルパー
     function svgIcon(pathD, strokeColor="#1565c0", redLines=[]) {
       let redSvg = "";
       if (redLines && redLines.length > 0) {
@@ -247,11 +243,202 @@
       `;
     }
 
-    // 臨床特化型 骨折・軟部組織分類データツリー
     const DATA_TREE = {
       id: "root",
       title: "大分類・解剖学的部位を選択",
       items: [
+        {
+          id: "periprosthetic",
+          title: "人工関節周囲骨折 (PFF)",
+          sub: "Vancouver分類 (THA) / BABA分類 (BHA)",
+          icon: svgIcon("M46 18 L54 18 L54 80 L46 80 Z", "#1565c0", ["M50 25 L50 65", "M38 45 L62 55"]),
+          children: {
+            title: "インプラント種別を選択",
+            items: [
+              {
+                id: "vancouver_group",
+                title: "THAステム周囲 (Vancouver)",
+                sub: "Type A / B (B1/B2/B3) / C",
+                icon: svgIcon("M44 20 L56 20 L52 75 L48 75 Z", "#1565c0", ["M40 45 L60 45"]),
+                children: {
+                  title: "骨折高位とステムの安定性・骨量",
+                  items: [
+                    {
+                      id: "vanc_a",
+                      title: "Type A (転子部単独)",
+                      sub: "AG (大転子) / AL (小転子)",
+                      icon: svgIcon("M45 25 L55 25 L53 60 L47 60 Z", "#1565c0", ["M35 25 L45 35"]),
+                      result: {
+                        code: "Vancouver Type A (AG / AL)",
+                        title: "大腿骨ステム周囲骨折（転子部限局型）",
+                        detail: "AG: 大転子骨折（外転筋力低下・脱臼リスク）。AL: 小転子骨折（腸腰筋付着部）。ステム本体の固定性は完全に維持。",
+                        clinical: "多くは保存療法可能。AGで転位 >2cm、または有痛性偽関節・外転機能不全を伴う場合はクロープレート（Claw plate）やケーブル把持固定。"
+                      }
+                    },
+                    {
+                      id: "vanc_b1",
+                      title: "Type B1 (ステム周囲・固定良好)",
+                      sub: "ステムのゆるみなし / 骨量保持",
+                      icon: svgIcon("M45 25 L55 25 L53 65 L47 65 Z", "#1565c0", ["M40 45 L60 55"]),
+                      result: {
+                        code: "Vancouver Type B1",
+                        title: "大腿骨ステム周囲骨折（ステム安定型）",
+                        detail: "骨折線はステム周囲または先端部に存在するが、術前X線および術中確認でステムのインプラント-骨界面固定性は良好に維持されている。",
+                        clinical: "骨接合術（ORIF）が第一選択。広範囲なロッキングプレート架橋固定＋近位部ケーブル併用固定（ステム穿孔を避けたバイコーティカル/ケーブル配置）。"
+                      }
+                    },
+                    {
+                      id: "vanc_b2",
+                      title: "Type B2 (ステム周囲・ゆるみあり)",
+                      sub: "ステム弛みあり / 骨量は温存",
+                      icon: svgIcon("M45 25 L55 25 L53 65 L47 65 Z", "#1565c0", ["M38 48 L62 52", "M50 35 L50 55"]),
+                      result: {
+                        code: "Vancouver Type B2",
+                        title: "大腿骨ステム周囲骨折（ステム弛緩型・骨量温存）",
+                        detail: "ステム周囲の骨折に伴いステムが弛緩（Sinking/沈下、不安定化）。ただし周囲の大腿骨骨ストックは再固定に耐えうるレベルで温存されている。",
+                        clinical: "【再置換術 (Revision THA) が必須】長頭セメントレス再置換ステム（遠位固定型フルコート/モジュラーフルートステム）への抜去入替え＋骨折部ケーブル・プレート固定。",
+                        danger: true
+                      }
+                    },
+                    {
+                      id: "vanc_b3",
+                      title: "Type B3 (ステム周囲・骨欠損高度)",
+                      sub: "ステム弛み ＋ 重度骨ストック喪失",
+                      icon: svgIcon("M45 25 L55 25 L53 65 L47 65 Z", "#c62828", ["M35 45 L65 55", "M36 55 L64 45"]),
+                      result: {
+                        code: "Vancouver Type B3",
+                        title: "大腿骨ステム周囲骨折（ステム弛緩・重度骨欠損型）",
+                        detail: "ステム弛緩に加え、骨溶解（Osteolysis）、高度骨粗鬆症、粉砕骨片により近位大腿骨支持能が壊滅的に消失している。",
+                        clinical: "高難度再置換。同種骨移植＋インパクションボーングラフト（IBG）＋長頭セメントステム、近位大腿骨置換型腫瘍用人工関節（APC/Proximal Femoral Replacement）、または骨折部架橋長頭テーパーフルートステム。",
+                        danger: true
+                      }
+                    },
+                    {
+                      id: "vanc_c",
+                      title: "Type C (ステム遠位骨折)",
+                      sub: "ステム先端より十分に遠位",
+                      icon: svgIcon("M45 20 L55 20 L53 50 L47 50 Z", "#1565c0", ["M40 70 L60 70"]),
+                      result: {
+                        code: "Vancouver Type C",
+                        title: "大腿骨ステム周囲骨折（ステム遠位型）",
+                        detail: "ステム先端より十分に遠位に位置する骨折。ステム固定性や人工関節周囲環境とは力学的に独立して扱うことが可能。",
+                        clinical: "ステム抜去は不要。通常の骨幹部/顆上部骨折と同様に、ステム先端を十分にオーバーラップ（最低2〜3皮質以上重複）する長尺ロッキングプレートによる内固定。"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                id: "baba_group",
+                title: "BHA周囲骨折 (BABA分類)",
+                sub: "大腿骨頚部骨折 人工骨頭術後骨折",
+                icon: svgIcon("M44 20 C38 20 40 30 40 40 L44 75 L56 75 L60 40 Z", "#1565c0", ["M40 45 L60 45"]),
+                children: {
+                  title: "BABA 分類（骨折高位・脱臼・ステム状態）",
+                  items: [
+                    {
+                      id: "baba_1",
+                      title: "BABA Type 1 (ステム近位・非貫通)",
+                      sub: "大転子・小転子単独 / ステム安定",
+                      icon: svgIcon("M45 25 L55 25 L53 65 L47 65 Z", "#1565c0", ["M36 28 L46 38"]),
+                      result: {
+                        code: "BABA Type 1 (Vancouver A相当)",
+                        title: "BHA後 大転子/小転子骨折",
+                        detail: "骨折線がステム遠位に及ばず、ステム本体の骨性固定・沈下がみられない型。",
+                        clinical: "保存療法が原則。大転子骨片の広範転位による外転機能不全や脱臼傾向があればケーブル把持固定。"
+                      }
+                    },
+                    {
+                      id: "baba_2",
+                      title: "BABA Type 2 (ステム周囲・非脱臼)",
+                      sub: "ステム周囲骨折 / 骨頭脱臼なし",
+                      icon: svgIcon("M45 25 L55 25 L53 65 L47 65 Z", "#1565c0", ["M38 48 L62 52"]),
+                      result: {
+                        code: "BABA Type 2 (Vancouver B相当)",
+                        title: "BHA後 ステム周囲骨折（非脱臼型）",
+                        detail: "ステム周囲の骨折（骨幹端〜骨幹部）。人工骨頭は寛骨臼内に保持されているが、ステム弛緩の有無判定が要。",
+                        clinical: "①ステム固定良好（B1相当）：長尺ロッキングプレート＋ケーブル固定。\n②ステム弛緩あり（B2相当）：長頭ステムへの再置換、または臼蓋側軟骨摩耗を伴う場合はTHAへのコンバージョン再置換。"
+                      }
+                    },
+                    {
+                      id: "baba_3",
+                      title: "BABA Type 3 (骨折＋骨頭脱臼)",
+                      sub: "ステム周囲骨折 ＋ 人工骨頭脱臼",
+                      icon: svgIcon("M45 35 L55 35 L53 75 L47 75 Z", "#c62828", ["M35 50 L65 58", "M40 22 C40 18 55 18 55 25"]),
+                      result: {
+                        code: "BABA Type 3 (Fracture-Dislocation)",
+                        title: "BHA後 ステム周囲骨折伴う人工骨頭脱臼",
+                        detail: "骨折と同時にバイポーラ骨頭が寛骨臼から完全脱臼。軟部組織の広範破綻と骨折の不安定性により整復位保持は極めて困難。",
+                        clinical: "【観血的再建必須】保存的徒手整復不能。長頭再置換ステム＋骨接合に加え、関節包再建またはDual Mobilityカップ等を用いたTHAへの再置換コンバージョンを強く考慮。",
+                        danger: true
+                      }
+                    },
+                    {
+                      id: "baba_4",
+                      title: "BABA Type 4 (ステム遠位骨折)",
+                      sub: "ステム先端より遠位 (Vancouver C相当)",
+                      icon: svgIcon("M45 20 L55 20 L53 50 L47 50 Z", "#1565c0", ["M40 68 L60 68"]),
+                      result: {
+                        code: "BABA Type 4 (Vancouver C相当)",
+                        title: "BHA後 ステム遠位骨折",
+                        detail: "ステム先端より遠位の骨幹部骨折。BHAステム本体のゆるみ・脱臼は伴わない。",
+                        clinical: "ステム抜去不要。ステム先端を十分にオーバーラップする長尺外側ロッキングプレートによる内固定。"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          id: "femur_distal_group",
+          title: "大腿骨遠位端 (AO 33)",
+          sub: "顆上部・顆部・Hoffa骨折 (33A / B / C)",
+          icon: svgIcon("M45 20 L55 20 L55 60 L65 80 L35 80 L45 60 Z", "#1565c0", ["M36 74 L64 74"]),
+          children: {
+            title: "関節面への浸潤度（AO 33）",
+            items: [
+              {
+                id: "ao_33a",
+                title: "33A: 関節外骨折 (Extra-articular)",
+                sub: "顆上部骨折 (Supracondylar)",
+                icon: svgIcon("M45 20 L55 20 L55 60 L65 80 L35 80 L45 60 Z", "#1565c0", ["M40 58 L60 58"]),
+                result: {
+                  code: "AO 33A (Extra-articular)",
+                  title: "大腿骨遠位部関節外骨折（顆上部骨折）",
+                  detail: "骨折線は顆上部に限局し関節面への連続性なし。腓腹筋牽引による遠位骨片の後方屈曲転位に注意。",
+                  clinical: "逆行性大腿骨髄内釘（Retrograde intramedullary nail）または外側遠位大腿骨ロッキングプレート（LISS/DF-LCP）。"
+                }
+              },
+              {
+                id: "ao_33b",
+                title: "33B: 部分関節内骨折 (Partial articular)",
+                sub: "内顆・外顆単独 / Hoffa骨折",
+                icon: svgIcon("M45 20 L55 20 L55 60 L65 80 L35 80 L45 60 Z", "#1565c0", ["M55 60 L65 80"]),
+                result: {
+                  code: "AO 33B (Partial articular / Hoffa)",
+                  title: "大腿骨顆部部分関節内骨折",
+                  detail: "一側の顆部骨折（33B1外顆、33B2内顆）または冠状断骨折であるHoffa骨折（33B3）。Hoffa骨折は見逃されやすく3D-CT評価が必須。",
+                  clinical: "解剖学的整復＋関節面水平スクリュー（前後または後前方向カニュレイテッドスクリュー埋没）＋バットレスプレート固定。"
+                }
+              },
+              {
+                id: "ao_33c",
+                title: "33C: 完全関節内骨折 (Complete articular)",
+                sub: "顆間粉砕 / Y・T字状骨折",
+                icon: svgIcon("M45 20 L55 20 L55 60 L65 80 L35 80 L45 60 Z", "#1565c0", ["M40 58 L60 58", "M50 58 L50 80"]),
+                result: {
+                  code: "AO 33C (Complete articular)",
+                  title: "大腿骨顆部完全関節内骨折（顆上・顆間骨折）",
+                  detail: "関節面が顆間で二分・粉砕され、さらに骨幹部とも解離している（T字・Y字骨折）。高度不安定型。",
+                  clinical: "関節面をスクリューで解剖学的に再構築（Condylar block化）後、外側ロッキングプレート（＋内側骨欠損時は内側二重プレート）で骨幹部と強固に架橋固定。",
+                  danger: true
+                }
+              }
+            ]
+          }
+        },
         {
           id: "pelvis_group",
           title: "骨盤・寛骨臼 (6)",
@@ -293,18 +480,6 @@
                       }
                     },
                     {
-                      id: "tile_b2",
-                      title: "Tile B2 (側方圧迫型)",
-                      sub: "LC型 / 内旋回旋不安定",
-                      icon: svgIcon("M26 36 L74 36", "#1565c0", ["M32 30 L40 60", "M70 35 L58 50"]),
-                      result: {
-                        code: "Tile Type B2 / Young-Burgess LC / AO 61B2",
-                        title: "骨盤輪骨折（側方圧迫型・回旋不安定/垂直安定）",
-                        detail: "同側の恥坐骨枝横骨折＋仙骨翼インパクション。回旋転位が生じるが後方骨性・靭帯の垂直抗力は維持。",
-                        clinical: "著しい内旋転位・脚長差がなければ保存療法考慮。回旋不安定性が強ければ前創外固定またはスクリュー固定。"
-                      }
-                    },
-                    {
                       id: "tile_c",
                       title: "Tile C (垂直剪断型)",
                       sub: "VS型 / 完全不安定 (61C)",
@@ -313,7 +488,7 @@
                         code: "Tile Type C / Young-Burgess VS / AO 61C",
                         title: "骨盤輪骨折（垂直・回旋完全不安定型）",
                         detail: "仙結節・仙棘靭帯および後仙腸靭帯完全断裂。半骨盤が頭側・後方へ垂直剪断転位（Vertical Shear）。大出血・ショック合併率極めて大。",
-                        clinical: "【緊急蘇生優先】急速輸血＋骨盤パッキング／経カテーテル動脈塞栓術(TAE)。初期創外固定またはC-clamp。全身状態安定後に前後合併骨接合術（仙腸関節スクリュー＋恥骨プレート）。",
+                        clinical: "【緊急蘇生優先】急速輸血＋骨盤パッキング／経カテーテル動脈塞栓術(TAE)。初期創外固定またはC-clamp。全身状態安定後に前後合併骨接合術。",
                         danger: true
                       }
                     }
@@ -341,18 +516,6 @@
                       }
                     },
                     {
-                      id: "transverse",
-                      title: "横骨折 (Transverse)",
-                      sub: "関節面を水平に二分",
-                      icon: svgIcon("M40 40 C40 30 60 30 60 40", "#1565c0", ["M30 45 L70 45"]),
-                      result: {
-                        code: "Judet-Letournel: Transverse / AO 62B1",
-                        title: "寛骨臼横骨折",
-                        detail: "寛骨臼を前後に走る骨折線により寛骨臼上部（骨盤本体）と下部（恥坐骨部）に二分。柱骨折ではなく両柱を跨ぐ横断骨折。",
-                        clinical: "骨折高位（Transtectal / Juxtatectal / Infratectal）によりアプローチ決定。後方進入、Ilioinguinal、またはStoppa変法アプローチ。"
-                      }
-                    },
-                    {
                       id: "both_col",
                       title: "両柱骨折 (Both Column)",
                       sub: "Floating Acetabulum",
@@ -361,7 +524,8 @@
                         code: "Judet-Letournel: Both Column / AO 62C",
                         title: "寛骨臼両柱骨折（浮動臼蓋）",
                         detail: "前柱および後柱がともに破綻し、関節軟骨を含むすべての骨片が仙腸関節軸骨格から解離。閉鎖孔斜位でSpur sign（距突徴候）陽性。",
-                        clinical: "高難度手術。骨折粉砕度と年齢を考慮し、腸骨鼠径展開等での解剖学的骨接合、あるいは高齢者では急性期THA（一期的人工股関節置換＋ケージ）も選択肢。"
+                        clinical: "高難度手術。腸骨鼠径展開（Ilioinguinal）またはStoppa変法展開等での解剖学的骨接合、あるいは高齢者では急性期THAも考慮。",
+                        danger: true
                       }
                     }
                   ]
@@ -371,12 +535,12 @@
           }
         },
         {
-          id: "femur_group",
-          title: "大腿骨 (3)",
-          sub: "頚部(Garden/Pauwels)・転子部・骨幹部・顆部",
-          icon: svgIcon("M46 18 C46 18 40 14 50 14 C60 14 54 24 54 34 L54 76 C54 84 62 86 58 88 C50 88 48 84 46 76 L46 34 C46 24 36 24 46 18 Z"),
+          id: "femur_prox_group",
+          title: "大腿骨近位部・骨幹部 (31/32)",
+          sub: "頚部(Garden/Pauwels)・転子部(Evans)・骨幹部",
+          icon: svgIcon("M46 18 C46 18 40 14 50 14 C60 14 54 24 54 34 L54 76 L46 76 Z"),
           children: {
-            title: "大腿骨の部位を選択",
+            title: "部位を選択",
             items: [
               {
                 id: "femur_neck",
@@ -384,64 +548,30 @@
                 sub: "Garden分類 / Pauwels分類",
                 icon: svgIcon("M36 26 C30 16 50 16 50 26 L48 40 L38 40 Z", "#1565c0", ["M36 32 L52 28"]),
                 children: {
-                  title: "評価分類を選択",
+                  title: "Garden分類（転位度）",
                   items: [
                     {
-                      id: "garden_eval",
-                      title: "Garden分類（転位・骨梁）",
-                      sub: "Stage I 〜 IV",
-                      icon: svgIcon("M40 30 L55 30", "#1565c0", ["M40 32 L55 26"]),
-                      children: {
-                        title: "Garden Stage",
-                        items: [
-                          {
-                            id: "g1",
-                            title: "Stage I (外反陥没)",
-                            sub: "不完全骨折 / 骨梁外反傾斜",
-                            icon: svgIcon("M40 30 L55 30", "#1565c0", ["M42 34 L50 24"]),
-                            result: {
-                              code: "Garden Stage I / AO 31B1.1",
-                              title: "大腿骨頚部外反陥没・不完全骨折",
-                              detail: "骨梁連続性は部分温存され、骨頭血流障害率は極めて低い。二次的転位防止の内固定が基本。",
-                              clinical: "骨接合術：ハンソンピン、CCS、あるいはDual SCスクリュー等の低侵襲内固定。"
-                            }
-                          },
-                          {
-                            id: "g3_4",
-                            title: "Stage III - IV (非安定転位型)",
-                            sub: "内反転位 / 完全骨頭解離",
-                            icon: svgIcon("M40 25 L55 25", "#1565c0", ["M34 40 L56 20"]),
-                            result: {
-                              code: "Garden Stage III-IV / AO 31B2-3",
-                              title: "大腿骨頚部転位型骨折（不安定）",
-                              detail: "Stage III：骨頭内反・回旋転位。Stage IV：頚部と骨幹部が完全解離。支持動脈（内側大腿回旋動脈深枝）損傷による骨頭壊死・偽関節リスク極大。",
-                              clinical: "高齢者：人工骨頭挿入術（BHA）またはTHAが第一選択。若年者：可及的早期の解剖学的徒手整復＋強固な内固定。"
-                            }
-                          }
-                        ]
+                      id: "g1",
+                      title: "Stage I (外反陥没)",
+                      sub: "不完全骨折 / 骨梁外反傾斜",
+                      icon: svgIcon("M40 30 L55 30", "#1565c0", ["M42 34 L50 24"]),
+                      result: {
+                        code: "Garden Stage I / AO 31B1.1",
+                        title: "大腿骨頚部外反陥没・不完全骨折",
+                        detail: "骨梁連続性は部分温存され、骨頭血流障害率は極めて低い。二次的転位防止の内固定が基本。",
+                        clinical: "骨接合術：ハンソンピン、CCS、あるいはDual SCスクリュー等の低侵襲内固定。"
                       }
                     },
                     {
-                      id: "pauwels_eval",
-                      title: "Pauwels分類（剪断応力角）",
-                      sub: "骨折線と水平面のなす角度",
-                      icon: svgIcon("M40 40 L65 40", "#1565c0", ["M42 40 L60 22"]),
-                      children: {
-                        title: "Pauwels 角度（水平面との傾斜角）",
-                        items: [
-                          {
-                            id: "pauwels_3",
-                            title: "Pauwels Type III (>50°)",
-                            sub: "高剪断応力 / 内固定破綻高リスク",
-                            icon: svgIcon("M35 50 L65 50", "#1565c0", ["M42 50 L56 22"]),
-                            result: {
-                              code: "Pauwels Type III (Angle > 50°)",
-                              title: "大腿骨頚部骨折（垂直骨折型）",
-                              detail: "荷重時に骨折面に強力な垂直剪断力（Shearing force）が加わるため、標準的な平行スクリュー単独では滑落・偽関節・カットアウトのリスクが非常に高い。",
-                              clinical: "骨接合を行う場合は、剪断力に抗する内側バットレスプレート併用や、内反防止機能を持つFNS（Femoral Neck System）または sliding hip screw with anti-rotation screw を考慮。"
-                            }
-                          }
-                        ]
+                      id: "g3_4",
+                      title: "Stage III - IV (非安定転位型)",
+                      sub: "内反転位 / 完全骨頭解離",
+                      icon: svgIcon("M40 25 L55 25", "#1565c0", ["M34 40 L56 20"]),
+                      result: {
+                        code: "Garden Stage III-IV / AO 31B2-3",
+                        title: "大腿骨頚部転位型骨折（不安定）",
+                        detail: "Stage III：骨頭内反・回旋転位。Stage IV：頚部と骨幹部が完全解離。支持動脈損傷による骨頭壊死・偽関節リスク極大。",
+                        clinical: "高齢者：人工骨頭挿入術（BHA）またはTHAが第一選択。若年者：可及的早期の解剖学的徒手整復＋強固な内固定。"
                       }
                     }
                   ]
@@ -476,7 +606,7 @@
                         code: "AO 31A2 (Multifragmentary)",
                         title: "大腿骨転子部骨折（不安定型）",
                         detail: "大転子外側壁破損（lateral wall fracture）や小転子の広範な粉砕骨片遊離を伴う。滑落・内反変形リスク大。",
-                        clinical: "髄内釘（短頭〜ミドルネイル）が第一選択。外側壁骨折防止および適切なラグスクリューTip-Apex Distance (TAD < 20mm) の確保。"
+                        clinical: "短頭〜ミドルセファロネイルが第一選択。ラグスクリューの至適設置（TAD < 20mm）確保。"
                       }
                     },
                     {
@@ -488,7 +618,7 @@
                         code: "AO 31A3 (Reverse obliquity / Transverse)",
                         title: "大腿骨転子部逆斜骨折・転子下骨折",
                         detail: "骨折線が内下方から外上方に走行。スライディング機構を有するプレートでは剪断力により骨幹部が内側へ滑脱転位する。",
-                        clinical: "【プレート単独禁忌傾向】長頭セファロメデュラリーネイル（Long Nail）または逆斜型対応ブレード/アングルドロッキングプレート。"
+                        clinical: "長頭セファロメデュラリーネイル（Long Nail）または逆斜型対応ロッキングプレート。"
                       }
                     }
                   ]
@@ -499,8 +629,8 @@
         },
         {
           id: "tibia_group",
-          title: "下腿骨・足関節 (4)",
-          sub: "Schatzker (高原) / Lauge-Hansen (足関節)",
+          title: "脛骨・足関節 (4)",
+          sub: "Schatzker (高原) / Danis-Weber / Lauge-Hansen",
           icon: svgIcon("M35 20 L65 20 L55 80 L45 80 Z"),
           children: {
             title: "損傷高位を選択",
@@ -514,14 +644,14 @@
                   title: "Schatzker 分類（高原骨折）",
                   items: [
                     {
-                      id: "schatzker_1_3",
-                      title: "Type I - III (外側プラトー)",
-                      sub: "I:分割 / II:分割陥没 / III:純粋陥没",
+                      id: "schatzker_2",
+                      title: "Type II (外側分割陥没)",
+                      sub: "最多型 / 半月板損傷高頻度",
                       icon: svgIcon("M35 25 L65 25 L55 45 Z", "#1565c0", ["M55 25 L55 40", "M55 32 L65 32"]),
                       result: {
-                        code: "Schatzker Type I-III / AO 41B",
-                        title: "脛骨高原外側骨折（部分関節内骨折）",
-                        detail: "低〜中エネルギー外傷。Type II（外側分割陥没）が最多。外側半月板断裂の合併頻度高。",
+                        code: "Schatzker Type II / AO 41B3",
+                        title: "脛骨高原外側分割陥没骨折",
+                        detail: "低〜中エネルギー外傷で頻発。外側半月板断裂や前十字靭帯損傷の合併率が高い。",
                         clinical: "関節面挙上・骨補填（人工骨）＋外側解剖学的ロッキングプレートによるバットレス固定。"
                       }
                     },
@@ -538,15 +668,15 @@
                       }
                     },
                     {
-                      id: "schatzker_5_6",
-                      title: "Type V - VI (両顆・骨幹解離)",
-                      sub: "V:両顆 / VI:骨幹端-骨幹部解離",
+                      id: "schatzker_6",
+                      title: "Type VI (骨幹端解離)",
+                      sub: "Bicondylar dissociation / 最重症",
                       icon: svgIcon("M35 25 L65 25 L55 55 Z", "#1565c0", ["M35 30 L65 30", "M38 42 L62 42"]),
                       result: {
-                        code: "Schatzker Type V-VI / AO 41C",
-                        title: "脛骨高原骨幹端解離骨折・両顆骨折",
-                        detail: "超高エネルギー外傷。内外側顆破綻に加え、関節面と骨幹部が完全断裂。軟部組織剥脱およびコンパートメント症候群のリスク最大。",
-                        clinical: "【初期治療】可及的早期の二期的創外固定（Span-Scan-Plan）。軟部組織（Wrinkle sign陽性等）回復を待って待機的に両側プレート固定。",
+                        code: "Schatzker Type VI / AO 41C",
+                        title: "脛骨高原骨幹端解離骨折",
+                        detail: "内外側顆破綻に加え、関節面と骨幹部が完全断裂。軟部組織剥脱およびコンパートメント症候群のリスク最大。",
+                        clinical: "【二段階治療】急性期は直ちに二期的創外固定（Span-Scan-Plan）。軟部組織回復後に待機的プレート固定。",
                         danger: true
                       }
                     }
@@ -555,67 +685,34 @@
               },
               {
                 id: "ankle_group",
-                title: "足関節骨折 (44)",
-                sub: "Danis-Weber / Lauge-Hansen分類",
-                icon: svgIcon("M38 30 L38 70 M62 30 L62 70 M30 70 L70 70", "#1565c0", ["M62 55 L70 65"]),
+                title: "足関節果部骨折 (44)",
+                sub: "Danis-Weber / Lauge-Hansen",
+                icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M62 55 L70 65"]),
                 children: {
-                  title: "分類基準を選択",
+                  title: "Danis-Weber分類（腓骨骨折高位）",
                   items: [
                     {
-                      id: "weber_eval",
-                      title: "Danis-Weber分類（腓骨骨折高位）",
-                      sub: "脛腓靭帯結合部（Syndesmosis）基準",
-                      icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M60 52 L66 52"]),
-                      children: {
-                        title: "Weber Type",
-                        items: [
-                          {
-                            id: "weber_a",
-                            title: "Weber A (靭帯結合より下)",
-                            sub: "AO 44A / 剥離骨折",
-                            icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M60 66 L66 66"]),
-                            result: { code: "Danis-Weber Type A / AO 44A", title: "足関節果部骨折（結合下）", detail: "足関節包内・脛腓靭帯結合より遠位の外果剥離。脛腓間離開なし。", clinical: "保存療法またはテンションバンドワイヤリング / ミニプレート。" }
-                          },
-                          {
-                            id: "weber_b",
-                            title: "Weber B (靭帯結合高位)",
-                            sub: "AO 44B / 斜骨折・回旋型",
-                            icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M58 56 L66 48"]),
-                            result: { code: "Danis-Weber Type B / AO 44B (SER型最多)", title: "足関節果部骨折（結合部レベル）", detail: "前下脛腓靭帯レベルからの外果斜骨折。内果骨折または三角靭帯断裂の有無により不安定性が激変する。", clinical: "外果プレート固定＋内果スクリュー固定。ストレス撮影で脛腓間不安定性があればシンデスモーシススクリュー追加。" }
-                          },
-                          {
-                            id: "weber_c",
-                            title: "Weber C (靭帯結合より上)",
-                            sub: "AO 44C / 骨間膜断裂・Maisonneuve骨折",
-                            icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M60 38 L66 38"]),
-                            result: { code: "Danis-Weber Type C / AO 44C (PER型等)", title: "足関節果部骨折（結合上・骨間膜完全破綻）", detail: "腓骨近位〜骨幹部の骨折を伴う（Maisonneuve骨折に注意）。骨間膜および下脛腓靭帯が完全断裂しMortise（天蓋適合）完全喪失。", clinical: "外果固定＋下脛腓固定（Syndesmotic screw 1〜2本、またはTightRope固定）。術後抜釘時期の検討。" }
-                          }
-                        ]
+                      id: "weber_b",
+                      title: "Weber B (結合部レベル)",
+                      sub: "AO 44B / SER型最多",
+                      icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M58 56 L66 48"]),
+                      result: {
+                        code: "Danis-Weber Type B / AO 44B",
+                        title: "足関節果部骨折（結合部レベル）",
+                        detail: "前下脛腓靭帯レベルからの外果斜骨折。内果骨折または三角靭帯断裂の有無により不安定性が激変する。",
+                        clinical: "外果プレート固定＋内果スクリュー固定。ストレス撮影で脛腓間不安定性があればシンデスモーシススクリュー追加。"
                       }
                     },
                     {
-                      id: "lh_eval",
-                      title: "Lauge-Hansen分類（受傷機転）",
-                      sub: "足部肢位＋外力方向 (SER / PER / SAD / PAB)",
-                      icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M58 52 L66 46", "M36 65 L42 65"]),
-                      children: {
-                        title: "受傷機転メカニズム",
-                        items: [
-                          {
-                            id: "ser",
-                            title: "SER (Supination-External Rotation)",
-                            sub: "回後-外旋損傷（最多：全体の60%）",
-                            icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M58 55 L66 45"]),
-                            result: { code: "Lauge-Hansen: SER (Stage I - IV)", title: "回後-外旋損傷", detail: "Stage 1: 前下脛腓靭帯断裂 → Stage 2: 腓骨スパイラル骨折 → Stage 3: 後果骨折(Volkmann) → Stage 4: 内果骨折または三角靭帯断裂。", clinical: "Stage 4はMortise離開を伴うため内果＋外果の観血的整復固定術（ORIF）必須。" }
-                          },
-                          {
-                            id: "per",
-                            title: "PER (Pronation-External Rotation)",
-                            sub: "回前-外旋損傷（高位腓骨骨折）",
-                            icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M60 36 L66 36"]),
-                            result: { code: "Lauge-Hansen: PER (Stage I - IV)", title: "回前-外旋損傷", detail: "Stage 1: 内果骨折/三角靭帯断裂からスタート → 前下脛腓断裂 → 高位腓骨骨折 → 後果骨折。高度不安定性。", clinical: "腓骨整復固定＋脛腓靭帯結合（Syndesmosis）スクリュー/タイトロープ固定。" }
-                          }
-                        ]
+                      id: "weber_c",
+                      title: "Weber C (結合部より近位)",
+                      sub: "AO 44C / 骨間膜断裂・Maisonneuve",
+                      icon: svgIcon("M38 30 L38 70 M62 30 L62 70", "#1565c0", ["M60 38 L66 38"]),
+                      result: {
+                        code: "Danis-Weber Type C / AO 44C",
+                        title: "足関節果部骨折（下脛腓結合完全破綻）",
+                        detail: "腓骨近位〜骨幹部の骨折を伴う（Maisonneuve骨折に注意）。骨間膜および下脛腓靭帯が完全断裂しMortise完全喪失。",
+                        clinical: "腓骨整復固定＋脛腓結合固定（Syndesmotic screw 1〜2本、またはTightRope固定）。"
                       }
                     }
                   ]
@@ -635,31 +732,24 @@
               {
                 id: "humerus_prox",
                 title: "上腕骨近位端 (11)",
-                sub: "Neer分類 (1-part 〜 4-part)",
+                sub: "Neer分類 (1〜4 part)",
                 icon: svgIcon("M40 25 C34 16 66 16 60 25 L56 45 L44 45 Z", "#1565c0", ["M38 28 L62 28"]),
                 children: {
                   title: "Neer分類（骨片数と転位: 1cm/45°）",
                   items: [
                     {
                       id: "neer_1part",
-                      title: "1-Part Fracture",
-                      sub: "無転位・軽度転位骨折",
+                      title: "1-Part (無転位・軽度転位)",
+                      sub: "転位基準未満 / 保存可能",
                       icon: svgIcon("M40 30 L60 30", "#1565c0", ["M45 30 L55 30"]),
-                      result: { code: "Neer 1-part / AO 11A", title: "上腕骨近位端無転位骨折", detail: "骨片間の転位が1cm未満かつ傾斜角が45度未満。骨折線が複数あっても1-partとして扱う。", clinical: "三角巾・アームスリング固定による保存療法。疼痛軽快後に早期振子運動開始。" }
-                    },
-                    {
-                      id: "neer_2_3part",
-                      title: "2-Part / 3-Part",
-                      sub: "大結節・解剖頚・外科頚転位",
-                      icon: svgIcon("M40 30 L60 30", "#1565c0", ["M40 35 L60 35", "M52 24 L52 35"]),
-                      result: { code: "Neer 2-part / 3-part / AO 11B", title: "上腕骨近位端転位型骨折", detail: "大結節転位（腱板機能不全原因）または外科頚転位。骨頭血流は部分的に保持。", clinical: "解剖学的ロッキングプレート固定（PHILOS等）または髄内釘。" }
+                      result: { code: "Neer 1-part / AO 11A", title: "上腕骨近位端無転位骨折", detail: "骨片間の転位が1cm未満かつ傾斜角が45度未満。", clinical: "三角巾・アームスリング固定による保存療法。早期振子運動開始。" }
                     },
                     {
                       id: "neer_4part",
                       title: "4-Part / 脱臼骨折",
-                      sub: "骨頭壊死高リスク / Head-split",
+                      sub: "骨頭壊死高リスク / 高齢者RSA",
                       icon: svgIcon("M40 30 L60 30", "#1565c0", ["M40 32 L60 32", "M50 20 L50 40", "M35 24 L45 32"]),
-                      result: { code: "Neer 4-part / AO 11C", title: "上腕骨近位端高度粉砕骨折", detail: "骨頭、大結節、小結節、骨幹部が完全解離。後上腕回旋動脈弓損傷による骨頭壊死率が極めて高い。", clinical: "若年者：可及的整復固定。高齢者：反転型人工肩関節全置換術（Reverse Shoulder Arthroplasty; RSA）適応。", danger: true }
+                      result: { code: "Neer 4-part / AO 11C", title: "上腕骨近位端高度粉砕骨折", detail: "骨頭、大結節、小結節、骨幹部が完全解離。骨頭血流遮断による壊死率極大。", clinical: "若年者：可及的整復固定。高齢者：反転型人工肩関節全置換術（RSA）適応。", danger: true }
                     }
                   ]
                 }
@@ -667,31 +757,24 @@
               {
                 id: "radius_distal",
                 title: "橈骨遠位端 (2R3 / 23)",
-                sub: "関節外(A) / 部分関節内(B) / 完全関節内(C)",
+                sub: "Colles / Barton / 関節内骨折",
                 icon: svgIcon("M44 20 L44 60 L36 78 L56 78 L52 60 L52 20 Z", "#1565c0", ["M36 72 L56 72"]),
                 children: {
-                  title: "AO 2R3 関節内浸潤度",
+                  title: "AO 2R3 関節面波及度",
                   items: [
                     {
                       id: "ao_23a",
                       title: "2R3A (関節外骨折)",
                       sub: "Colles骨折 / Smith骨折",
                       icon: svgIcon("M40 30 L55 30 L55 70 L40 70 Z", "#1565c0", ["M38 62 L57 62"]),
-                      result: { code: "AO 2R3A / Colles / Smith骨折", title: "橈骨遠位端関節外骨折", detail: "手関節面への骨折線波及なし。背側転位型（Colles）または掌側転位型（Smith）。", clinical: "整復位良好ならギプス固定。背側傾斜>10°、短縮>3mmは掌側ロッキングプレート適応。" }
-                    },
-                    {
-                      id: "ao_23b",
-                      title: "2R3B (部分関節内)",
-                      sub: "Barton骨折 / 茎状突起(Chauffeur)",
-                      icon: svgIcon("M40 30 L55 30 L55 70 L40 70 Z", "#1565c0", ["M42 66 L57 58"]),
-                      result: { code: "AO 2R3B / 掌側・背側Barton骨折", title: "橈骨遠位端部分関節内骨折（脱臼骨折）", detail: "関節面の一部が骨幹部と連続したまま骨片が脱臼方向に転位。手根骨亜脱臼を伴う。", clinical: "不安定性が高く保存不能。掌側または背側バットレスプレート固定。" }
+                      result: { code: "AO 2R3A / Colles骨折", title: "橈骨遠位端関節外骨折", detail: "関節内浸潤なし。背側傾斜>10°や短縮>3mmは不安定型。", clinical: "掌側ロッキングプレート固定または徒手整復ギプス固定。" }
                     },
                     {
                       id: "ao_23c",
-                      title: "2R3C (完全関節内)",
-                      sub: "関節面・骨幹端粉砕",
+                      title: "2R3C (完全関節内骨折)",
+                      sub: "関節面粉砕 / 月状骨窩陥没",
                       icon: svgIcon("M40 30 L55 30 L55 70 L40 70 Z", "#1565c0", ["M38 64 L57 64", "M48 64 L48 76"]),
-                      result: { code: "AO 2R3C", title: "橈骨遠位端完全関節内骨折", detail: "関節面が矢状面・冠状面に粉砕され骨幹部からも解離。月状骨窩の沈下（die-punch）に留意。", clinical: "掌側ロッキングプレート＋関節鏡視下整復（骨片挙上）または背側併用固定。" }
+                      result: { code: "AO 2R3C", title: "橈骨遠位端完全関節内骨折", detail: "関節面が矢状面・冠状面に粉砕され骨幹部からも解離。ステップオフの残存は変形性関節症の直結原因。", clinical: "掌側ロッキングプレート＋関節鏡視下整復（骨片挙上）または背側併用固定。" }
                     }
                   ]
                 }
@@ -701,47 +784,35 @@
         },
         {
           id: "open_group",
-          title: "開放骨折 (軟部組織)",
-          sub: "Gustilo-Anderson分類 (I 〜 IIIC)",
+          title: "開放骨折 (Gustilo)",
+          sub: "軟部組織損傷度 / 救急トリアージ (I〜IIIC)",
           icon: svgIcon("M30 50 L70 50", "#c62828", ["M40 35 L60 65", "M40 65 L60 35"]),
           children: {
-            title: "創サイズ・汚染度・血行不全",
+            title: "Gustilo-Anderson 分類",
             items: [
               {
-                id: "gustilo_1_2",
-                title: "Type I - II (中等度まで)",
-                sub: "I:創 < 1cm / II:創 1-10cm 軟部剥脱なし",
-                icon: svgIcon("M35 50 L65 50", "#1565c0", ["M46 50 L54 50"]),
-                result: {
-                  code: "Gustilo-Anderson Type I - II",
-                  title: "低〜中等度 開放骨折",
-                  detail: "Type I：創1cm未満の刺入創、清浄。Type II：創1〜10cm、過度の軟部損傷や剥脱皮弁なし。",
-                  clinical: "第1世代セファロスポリン投与。緊急洗浄・デブリードマン。Type I〜IIは一期的内固定も考慮可能。"
-                }
-              },
-              {
-                id: "gustilo_3ab",
-                title: "Type IIIA - IIIB",
-                sub: "広範損傷 / IIIB:骨膜剥脱・骨露出",
+                id: "gustilo_3b",
+                title: "Type IIIB (広範軟部欠損)",
+                sub: "骨膜剥脱 / 骨露出 / 皮弁再建要",
                 icon: svgIcon("M30 50 L70 50", "#1565c0", ["M35 40 L65 60", "M35 60 L65 40"]),
                 result: {
-                  code: "Gustilo-Anderson Type IIIA - IIIB",
+                  code: "Gustilo-Anderson Type IIIB",
                   title: "重度開放骨折（広範軟部欠損）",
-                  detail: "高エネルギー外傷。IIIA：広範軟部損傷だが骨被覆可能。IIIB：骨膜剥脱・骨露出を伴い局所皮弁や遊離皮弁による再建が必要。",
-                  clinical: "グラム陰性桿菌カバー抗菌薬追加（アミノグリコシド等）。緊急徹底デブリードマン＋創外固定。創傷治癒後に二期的再建。",
+                  detail: "高エネルギー外傷。広範な骨膜剥脱と骨露出を伴い、局所皮弁や遊離皮弁による再建が必要。",
+                  clinical: "緊急徹底デブリードマン＋創外固定。グラム陰性桿菌カバー抗菌薬。二期的皮弁形成。",
                   danger: true
                 }
               },
               {
                 id: "gustilo_3c",
-                title: "Type IIIC (主動脈損傷)",
-                sub: "四肢阻血 / 修復を要する動脈損傷",
+                title: "Type IIIC (動脈損傷伴う四肢阻血)",
+                sub: "血行再建必須 / Warm ischemia限界",
                 icon: svgIcon("M30 50 L70 50", "#c62828", ["M25 35 L75 65", "M25 65 L75 35"]),
                 result: {
                   code: "Gustilo-Anderson Type IIIC",
                   title: "最重度開放骨折（血行再建必須型）",
-                  detail: "軟部組織損傷の程度に関わらず、四肢温存のために修復を要する主要動脈損傷を合併した開放骨折。阻血時間限界（Warm ischemia time）との闘い。",
-                  clinical: "【緊急血行再建・一時的シャント】創外固定による骨安定化先行または同時血管縫合。コンパートメント症候群予防のための予防的筋膜切開を強く考慮。切断指数の評価（MESS等）。",
+                  detail: "四肢温存のために修復を要する主要動脈損傷を合併。時間経過とともに不可逆的筋壊死・阻血性拘縮が生じる。",
+                  clinical: "【緊急血行再建】創外固定による骨安定化先行または一時的シャント。予防的筋膜切開を強く考慮。",
                   danger: true
                 }
               }
@@ -751,7 +822,7 @@
       ]
     };
 
-    // アプリケーションクラス
+    // スマホブラウザの「戻る」ボタン・スワイプ連動ロジック
     class ClassifierPro {
       constructor(data) {
         this.data = data;
@@ -759,7 +830,19 @@
         this.currentView = document.getElementById("app-view");
         this.breadcrumb = document.getElementById("breadcrumb");
         this.toast = document.getElementById("toast");
-        this.render();
+
+        // 初期ステートをブラウザ履歴に登録
+        history.replaceState({ depth: 0 }, "");
+
+        // スマホ本体の戻るボタン（popstateイベント）の検知
+        window.addEventListener("popstate", (e) => {
+          if (this.history.length > 0) {
+            this.history.pop();
+            this.render(false); // 履歴popによる描画
+          }
+        });
+
+        this.render(false);
       }
 
       getCurrentNode() {
@@ -772,19 +855,23 @@
 
       select(index) {
         this.history.push(index);
-        this.render();
+        // ブラウザの戻る履歴に1つ進める
+        history.pushState({ depth: this.history.length }, "");
+        this.render(false);
       }
 
-      back() {
+      // 画面上部の「戻る」ボタンを押した時
+      userBack() {
         if (this.history.length > 0) {
-          this.history.pop();
-          this.render();
+          history.back(); // これによりpopstateがトリガーされ、戻る
         }
       }
 
-      reset() {
-        this.history = [];
-        this.render();
+      // 画面上部の「Top」ボタンを押した時
+      userReset() {
+        if (this.history.length > 0) {
+          history.go(-this.history.length);
+        }
       }
 
       copy(text) {
@@ -796,12 +883,11 @@
         });
       }
 
-      render() {
+      render(isPop) {
         const currentNode = this.getCurrentNode();
         this.updateBreadcrumb();
         this.currentView.innerHTML = "";
 
-        // 終端：結果画面
         if (currentNode.result) {
           const r = currentNode.result;
           const clipText = `【骨折・外傷診断】\n分類: ${r.code}\n診断名: ${r.title}\n病態・解剖: ${r.detail}\n治療方針: ${r.clinical}`;
@@ -812,10 +898,10 @@
               <div class="result-title">${r.title}</div>
               
               <div class="section-label">Pathology & Anatomy</div>
-              <div class="result-detail">${r.detail}</div>
+              <div class="result-detail">${r.detail.replace(/\n/g, '<br>')}</div>
 
               <div class="section-label">Management / Strategy</div>
-              <div class="result-clinical">${r.clinical}</div>
+              <div class="result-clinical">${r.clinical.replace(/\n/g, '<br>')}</div>
 
               <button class="copy-btn" onclick="app.copy(\`${clipText.replace(/\n/g, '\\n')}\`)">
                 📋 カルテ・サマリー用にコピー
@@ -825,7 +911,6 @@
           return;
         }
 
-        // 次の選択肢リストがある場合
         const targetList = currentNode.children ? currentNode.children : currentNode;
         const items = targetList.items;
 

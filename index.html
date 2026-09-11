@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Fracture Classifier</title>
+  <style>
+    :root {
+      --primary: #1976d2;
+      --primary-dark: #0d47a1;
+      --bg: #f4f6f8;
+      --card-bg: #ffffff;
+      --text: #212121;
+      --text-sub: #666666;
+      --accent: #2e7d32;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      background-color: var(--primary);
+      color: white;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .reset-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .breadcrumb-bar {
+      background: #e3f2fd;
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      color: var(--primary-dark);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow-x: auto;
+      border-bottom: 1px solid #bbdefb;
+    }
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .step-indicator {
+      font-size: 0.9rem;
+      color: var(--text-sub);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .card:active {
+      transform: scale(0.97);
+      background-color: #f0f7ff;
+      border-color: var(--primary);
+    }
+    .card svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 10px;
+    }
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: var(--text);
+    }
+    .card-sub {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+    /* 判定結果画面 */
+    .result-box {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border-top: 6px solid var(--accent);
+    }
+    .result-code {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .result-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .result-detail {
+      font-size: 0.9rem;
+      color: #444;
+      line-height: 1.5;
+      margin-bottom: 16px;
+      background: #f9f9f9;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .result-clinical {
+      font-size: 0.85rem;
+      color: #c62828;
+      background: #ffebee;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    .copy-btn {
+      width: 100%;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .copy-btn:active {
+      background-color: var(--primary-dark);
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>骨折分類セレクター</h1>
+    <button class="reset-btn" onclick="app.reset()">最初から</button>
+  </header>
+
+  <div class="breadcrumb-bar" id="breadcrumb">部位を選択</div>
+
+  <main id="app-view">
+    <!-- 動的にカードがレンダリングされます -->
+  </main>
+
+  <div class="toast" id="toast">カルテ用テキストをコピーしました</div>
+
+  <script>
+    // 骨シェイプのSVG生成ヘルパー
+    function svgIcon(pathD, strokeColor="#1976d2", accentD="") {
+      return `
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="46" fill="#f0f4f8"/>
+          <path d="${pathD}" stroke="${strokeColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          ${accentD ? `<path d="${accentD}" stroke="#d32f2f" stroke-width="4" stroke-linecap="round"/>` : ''}
+        </svg>
+      `;
+    }
+
+    // 分類データ定義（拡張可能）
+    const DATA_TREE = {
+      id: "root",
+      title: "解剖学的部位を選択",
+      items: [
+        {
+          id: "femur",
+          title: "大腿骨 (Femur)",
+          sub: "AO: 3 / 頚部・転子部・骨幹部・遠位",
+          icon: svgIcon("M45 20 C45 20 40 15 50 15 C60 15 55 25 55 35 L55 75 C55 85 62 88 58 90 C50 90 48 85 45 75 L45 35 C45 25 35 25 45 20 Z"),
+          children: {
+            title: "大腿骨の部位を選択",
+            items: [
+              {
+                id: "femur_proximal",
+                title: "近位部 (31)",
+                sub: "骨頭・頚部・転子部",
+                icon: svgIcon("M40 25 C35 15 65 15 60 25 L55 45 L45 45 Z", "#1976d2", "M35 30 L65 30"),
+                children: {
+                  title: "近位部の骨折型を選択",
+                  items: [
+                    {
+                      id: "femur_neck",
+                      title: "頚部骨折 (31B)",
+                      sub: "Garden分類 / Pauwels分類",
+                      icon: svgIcon("M35 25 C30 15 50 15 50 25 L48 40 L38 40 Z", "#1976d2", "M36 32 L52 28"),
+                      children: {
+                        title: "Garden分類（転位・骨梁角）",
+                        items: [
+                          {
+                            id: "g1",
+                            title: "Garden Stage I",
+                            sub: "不完全骨折 / 外反陥没",
+                            icon: svgIcon("M40 30 L55 30", "#1976d2", "M42 35 L50 25"),
+                            result: {
+                              code: "AO 31B1.1 / Garden Type I",
+                              title: "大腿骨頚部外反陥没・不完全骨折",
+                              detail: "立骨梁の角度が外反方向に傾斜。血流温存率は比較的高い。",
+                              clinical: "術式：CCS / ハンソンピン等による骨接合術が第一選択。"
+                            }
+                          },
+                          {
+                            id: "g2",
+                            title: "Garden Stage II",
+                            sub: "完全骨折 / 転位なし",
+                            icon: svgIcon("M40 30 L55 30", "#1976d2", "M42 30 L55 30"),
+                            result: {
+                              code: "AO 31B1.2 / Garden Type II",
+                              title: "大腿骨頚部完全骨折（非転位型）",
+                              detail: "骨梁連続性は途絶しているがアライメントは保持。",
+                              clinical: "術式：CCS等による内固定。"
+                            }
+                          },
+                          {
+                            id: "g3",
+                            title: "Garden Stage III",
+                            sub: "完全骨折 / 部分転位（内反）",
+                            icon: svgIcon("M40 30 L55 30", "#1976d2", "M40 28 L52 35"),
+                            result: {
+                              code: "AO 31B2.1 / Garden Type III",
+                              title: "大腿骨頚部完全骨折（部分転位型）",
+                              detail: "骨頭が内反方向に回旋転位。骨頭栄養血管障害のリスク高。",
+                              clinical: "高齢者：人工骨頭挿入術（BHA）。若年者：可及的早期の整復固定。"
+                            }
+                          },
+                          {
+                            id: "g4",
+                            title: "Garden Stage IV",
+                            sub: "完全転位 / 骨頭フリー",
+                            icon: svgIcon("M40 25 L55 25", "#1976d2", "M35 40 L55 20"),
+                            result: {
+                              code: "AO 31B3 / Garden Type IV",
+                              title: "大腿骨頚部完全骨折（高度転位型）",
+                              detail: "骨頭と頚部骨幹部が完全に乖離。骨頭壊死・偽関節リスク極大。",
+                              clinical: "適応：BHA（高齢者）またはTHA。若年者に対する骨頭温存は整復位獲得が生命線。"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      id: "femur_troch",
+                      title: "転子部骨折 (31A)",
+                      sub: "AO 31A1-3 / Evans分類",
+                      icon: svgIcon("M35 25 L65 25 L55 55 L45 55 Z", "#1976d2", "M35 38 L65 50"),
+                      children: {
+                        title: "転子部骨折の安定性評価",
+                        items: [
+                          {
+                            id: "troch_stable",
+                            title: "安定型 (Stable)",
+                            sub: "31A1 / 後内側皮質保持",
+                            icon: svgIcon("M40 30 L60 30 L55 50 Z", "#1976d2", "M40 35 L60 45"),
+                            result: {
+                              code: "AO 31A1 (Stable)",
+                              title: "大腿骨転子部骨折（安定型）",
+                              detail: "小転子を含むPosteromedial cortexの連続性が良好。荷重支持能あり。",
+                              clinical: "選択肢：CHS (Compression Hip Screw) または 短頭髄内釘 (Short Nail)。"
+                            }
+                          },
+                          {
+                            id: "troch_unstable",
+                            title: "不安定型 (Unstable)",
+                            sub: "31A2 / 後内側破砕・大転子粉砕",
+                            icon: svgIcon("M40 30 L60 30 L55 50 Z", "#1976d2", "M35 35 L65 45 M45 35 L55 50"),
+                            result: {
+                              code: "AO 31A2 (Unstable)",
+                              title: "大腿骨転子部骨折（不安定型）",
+                              detail: "小転子骨片遊離、大転子外側壁破損などによるテレスコーピングリスク大。",
+                              clinical: "第一選択：ショートまたはミドルセファロメデュラリーネイル（髄内釘）。"
+                            }
+                          },
+                          {
+                            id: "troch_reverse",
+                            title: "逆斜骨折 (Reverse)",
+                            sub: "31A3 / 外側皮質断裂",
+                            icon: svgIcon("M40 30 L60 30 L55 50 Z", "#1976d2", "M40 50 L60 35"),
+                            result: {
+                              code: "AO 31A3 (Reverse obliquity)",
+                              title: "大腿骨転子下/転子部逆斜骨折",
+                              detail: "骨折線が内下方から外上方に走行。CHS単独ではカットアウト・スライディング過多で破綻する。",
+                              clinical: "適応：長頭/短頭セファロネイル、あるいはブレード/ロッキングプレート併用。"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                id: "femur_shaft",
+                title: "骨幹部 (32)",
+                sub: "単純正・楔状・粉砕 (A/B/C)",
+                icon: svgIcon("M45 20 L55 20 L55 80 L45 80 Z", "#1976d2", "M40 50 L60 50"),
+                children: {
+                  title: "骨折形態",
+                  items: [
+                    {
+                      id: "femur_32a",
+                      title: "32A: 単純骨折",
+                      sub: "横・斜骨折 (Spiral/Transverse)",
+                      icon: svgIcon("M45 20 L55 20 L55 80 L45 80 Z", "#1976d2", "M43 50 L57 50"),
+                      result: { code: "AO 32A", title: "大腿骨骨幹部単純骨折", detail: "2骨片の単純骨折。アライメント保持と短縮防止が主眼。", clinical: "順行性または逆行性髄内釘固定。" }
+                    },
+                    {
+                      id: "femur_32b",
+                      title: "32B: 楔状骨片 (Wedge)",
+                      sub: "Bending / Fragmented wedge",
+                      icon: svgIcon("M45 20 L55 20 L55 80 L45 80 Z", "#1976d2", "M45 45 L55 40 M45 55 L55 50"),
+                      result: { code: "AO 32B", title: "大腿骨骨幹部楔状骨折", detail: "第3骨片を有するが、主骨片同士の接触が得られる型。", clinical: "インターロッキング髄内釘固定。" }
+                    },
+                    {
+                      id: "femur_32c",
+                      title: "32C: 複合骨折 (Complex)",
+                      sub: "分節状・高度粉砕",
+                      icon: svgIcon("M45 20 L55 20 L55 80 L45 80 Z", "#1976d2", "M45 40 L55 60 M45 60 L55 40"),
+                      result: { code: "AO 32C", title: "大腿骨骨幹部粉砕骨折", detail: "骨幹部接触なし。回転・長径の指標消失。", clinical: "長頭髄内釘による架橋固定または低侵襲プレート（MIPO）。" }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          id: "pelvis",
+          title: "骨盤・寛骨臼 (Pelvis / 6)",
+          sub: "AO: 61/62, Tile, Judet-Letournel",
+          icon: svgIcon("M20 30 C30 15 70 15 80 30 C75 55 60 75 50 85 C40 75 25 55 20 30 Z", "#1976d2"),
+          children: {
+            title: "損傷領域を選択",
+            items: [
+              {
+                id: "pelvis_ring",
+                title: "骨盤輪骨折 (61)",
+                sub: "Tile分類 / Young-Burgess分類",
+                icon: svgIcon("M20 30 C30 15 70 15 80 30 C75 55 60 75 50 85 Z", "#1976d2", "M30 40 L45 55"),
+                children: {
+                  title: "Tile分類（力学的安定性）",
+                  items: [
+                    {
+                      id: "tile_a",
+                      title: "Tile Type A",
+                      sub: "安定型 (骨盤輪の破綻なし)",
+                      icon: svgIcon("M25 35 L75 35", "#1976d2", "M25 40 L35 40"),
+                      result: {
+                        code: "Tile Type A / AO 61A",
+                        title: "骨盤輪骨折（安定型）",
+                        detail: "恥坐骨枝単独骨折、腸骨翼単独骨折、仙骨裂開など骨盤輪の支持性は温存。",
+                        clinical: "保存療法（疼痛コントロール下に早期歩行訓練）。"
+                      }
+                    },
+                    {
+                      id: "tile_b",
+                      title: "Tile Type B",
+                      sub: "回旋不安定・垂直安定 (Open book / LC)",
+                      icon: svgIcon("M25 35 L75 35", "#1976d2", "M50 30 L50 60"),
+                      result: {
+                        code: "Tile Type B / AO 61B",
+                        title: "骨盤輪骨折（回旋不安定・垂直安定）",
+                        detail: "B1: 外旋損傷（Open book）、B2: 側方圧迫型（LC）。後方仙腸関節複合体の一部が温存。",
+                        clinical: "創外固定、骨盤バインダー、恥骨結合プレート固定。"
+                      }
+                    },
+                    {
+                      id: "tile_c",
+                      title: "Tile Type C",
+                      sub: "回旋・垂直不安定 (完全破綻)",
+                      icon: svgIcon("M25 35 L75 35", "#1976d2", "M35 30 L45 60 M65 30 L55 60"),
+                      result: {
+                        code: "Tile Type C / AO 61C",
+                        title: "骨盤輪骨折（回旋・垂直不安定完全破綻型）",
+                        detail: "仙外側・後方靭帯完全断裂、垂直方向の剪断転位（Vertical Shear）。",
+                        clinical: "救急蘇生優先（骨盤パッキング・血管塞栓術TAE）。待機的に前後合併固定。"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                id: "acetabulum",
+                title: "寛骨臼骨折 (62)",
+                sub: "Judet-Letournel分類",
+                icon: svgIcon("M35 35 C35 25 65 25 65 35 C65 55 35 55 35 35 Z", "#1976d2", "M40 30 L60 50"),
+                children: {
+                  title: "骨折形態（要素）",
+                  items: [
+                    {
+                      id: "pw_fracture",
+                      title: "後壁骨折 (Posterior Wall)",
+                      sub: "最も頻度が高い / 股関節後方脱臼合併",
+                      icon: svgIcon("M40 40 C40 30 60 30 60 40", "#1976d2", "M55 32 L65 45"),
+                      result: {
+                        code: "Judet-Letournel: Posterior Wall / AO 62A1",
+                        title: "寛骨臼後壁骨折",
+                        detail: "後方関節面の破綻により股関節後方不安定性を生じる。坐骨神経麻痺の併発に注意。",
+                        clinical: "Kocher-Langenbeck進入法での解剖学的整復＋再建プレート固定。"
+                      }
+                    },
+                    {
+                      id: "both_column",
+                      title: "両柱骨折 (Both Column)",
+                      sub: "Floating Acetabulum",
+                      icon: svgIcon("M40 40 C40 30 60 30 60 40", "#1976d2", "M35 30 L45 55 M65 30 L55 55"),
+                      result: {
+                        code: "Judet-Letournel: Both Column / AO 62C",
+                        title: "寛骨臼両柱骨折（浮動臼蓋）",
+                        detail: "前柱・後柱ともに破綻し、関節面全体が体幹軸骨格から遊離。Spur sign（距突徴候）陽性。",
+                        clinical: "腸骨鼠径（Ilioinguinal）またはStoppa変法アプローチ等による高難度再建。"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          id: "tibia",
+          title: "脛骨 (Tibia / 4)",
+          sub: "高原骨折 (Schatzker) / 遠位部 (Pilon)",
+          icon: svgIcon("M35 20 L65 20 L55 80 L45 80 Z"),
+          children: {
+            title: "部位を選択",
+            items: [
+              {
+                id: "tibia_plateau",
+                title: "近位端・高原骨折 (41)",
+                sub: "Schatzker分類 (I - VI)",
+                icon: svgIcon("M35 20 L65 20 L55 40 L45 40 Z", "#1976d2", "M50 20 L50 35"),
+                children: {
+                  title: "Schatzker分類",
+                  items: [
+                    {
+                      id: "schatzker_2",
+                      title: "Type II",
+                      sub: "外側 プラトー 分割＋陥没",
+                      icon: svgIcon("M35 25 L65 25 L55 45 Z", "#1976d2", "M55 25 L55 40 M55 32 L65 32"),
+                      result: {
+                        code: "Schatzker Type II / AO 41B3",
+                        title: "脛骨高原外側分割陥没骨折",
+                        detail: "若年者〜骨粗鬆症まで多発。外側半月板・前十字靭帯損傷の合併率が高い。",
+                        clinical: "関節鏡視下または関節切開での関節面挙上・人工骨補填＋外側ロッキングプレート。"
+                      }
+                    },
+                    {
+                      id: "schatzker_4",
+                      title: "Type IV",
+                      sub: "内側 プラトー骨折 (高エネルギー)",
+                      icon: svgIcon("M35 25 L65 25 L55 45 Z", "#1976d2", "M42 25 L42 45"),
+                      result: {
+                        code: "Schatzker Type IV / AO 41B1-3(medial)",
+                        title: "脛骨高原内側骨折",
+                        detail: "膝関節脱臼骨折の亜型。膝窩動脈・腓骨神経損傷リスクが高く慎重な神経血管評価が必要。",
+                        clinical: "内側バットレスプレート固定（NCB等のシステム選択時は内側展開・専用プレート要確認）。"
+                      }
+                    },
+                    {
+                      id: "schatzker_6",
+                      title: "Type VI",
+                      sub: "骨幹端-骨幹部解離 (Bicondylar dissociation)",
+                      icon: svgIcon("M35 25 L65 25 L55 55 Z", "#1976d2", "M35 30 L65 30 M38 42 L62 42"),
+                      result: {
+                        code: "Schatzker Type VI / AO 41C",
+                        title: "脛骨高原骨幹端解離骨折",
+                        detail: "内外側顆の粉砕に加え骨幹部と完全に断裂。コンパートメント症候群の最大警戒型。",
+                        clinical: "急性期は二期的創外固定（Span-Scan-Plan）。軟部組織回復後に二重プレート固定。"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    };
+
+    // アプリケーション状態管理
+    class ClassifierApp {
+      constructor(data) {
+        this.data = data;
+        this.path = []; // 選択したノードの履歴
+        this.currentView = document.getElementById("app-view");
+        this.breadcrumb = document.getElementById("breadcrumb");
+        this.toast = document.getElementById("toast");
+        this.render();
+      }
+
+      getCurrentNode() {
+        let node = this.data;
+        for (const idx of this.path) {
+          node = (node.children ? node.children.items : node.items)[idx];
+        }
+        return node;
+      }
+
+      select(index) {
+        this.path.push(index);
+        this.render();
+      }
+
+      reset() {
+        this.path = [];
+        this.render();
+      }
+
+      copyResult(text) {
+        navigator.clipboard.writeText(text).then(() => {
+          this.toast.style.opacity = "1";
+          setTimeout(() => {
+            this.toast.style.opacity = "0";
+          }, 1800);
+        });
+      }
+
+      render() {
+        const currentNode = this.getCurrentNode();
+        this.renderBreadcrumb();
+
+        this.currentView.innerHTML = "";
+
+        // 終端（判定結果）の場合
+        if (currentNode.result) {
+          const r = currentNode.result;
+          const copyContent = `【診断・骨折分類】\n${r.code}: ${r.title}\n病態: ${r.detail}\n指針: ${r.clinical}`;
+          
+          this.currentView.innerHTML = `
+            <div class="result-box">
+              <div class="result-code">${r.code}</div>
+              <div class="result-title">${r.title}</div>
+              <div class="result-detail">${r.detail}</div>
+              <div class="result-clinical">${r.clinical}</div>
+              <button class="copy-btn" onclick="app.copyResult(\`${copyContent.replace(/\n/g, '\\n')}\`)">
+                📋 カルテ・サマリー用にコピー
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        // 次の選択肢リストがある場合
+        const targetList = currentNode.children ? currentNode.children : currentNode;
+        const items = targetList.items;
+
+        const headerTitle = document.createElement("div");
+        headerTitle.className = "step-indicator";
+        headerTitle.innerText = targetList.title || "選択してください";
+        this.currentView.appendChild(headerTitle);
+
+        const grid = document.createElement("div");
+        grid.className = "grid";
+
+        items.forEach((item, index) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.innerHTML = `
+            ${item.icon || ''}
+            <div class="card-title">${item.title}</div>
+            ${item.sub ? `<div class="card-sub">${item.sub}</div>` : ''}
+          `;
+          card.onclick = () => this.select(index);
+          grid.appendChild(card);
+        });
+
+        this.currentView.appendChild(grid);
+      }
+
+      renderBreadcrumb() {
+        if (this.path.length === 0) {
+          this.breadcrumb.innerText = "部位選択";
+          return;
+        }
+        let names = ["Top"];
+        let node = this.data;
+        for (const idx of this.path) {
+          node = (node.children ? node.children.items : node.items)[idx];
+          names.push(node.title.split(" ")[0]);
+        }
+        this.breadcrumb.innerText = names.join(" > ");
+      }
+    }
+
+    const app = new ClassifierApp(DATA_TREE);
+  </script>
+</body>
+</html>
